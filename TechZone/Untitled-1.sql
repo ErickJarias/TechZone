@@ -141,57 +141,6 @@ LEFT JOIN ventas v ON c.id = v.cliente_id
 WHERE v.fecha IS NULL 
    OR v.fecha < CURRENT_DATE - INTERVAL '6 months';
 
---Un procedimiento almacenado para registrar una venta--
-
-CREATE OR REPLACE FUNCTION registrar_venta(
-    p_cliente_id INT,
-    p_detalle JSON
-) RETURNS VOID AS $$
-DECLARE
-    v_id_venta INT;
-    v_total NUMERIC(10, 2) := 0;
-    v_item JSON;
-    v_id_producto INT;
-    v_cantidad INT;
-    v_precio_unitario NUMERIC(10, 2);
-BEGIN
-    -- Crear la venta
-    INSERT INTO ventas (cliente_id, total)
-    VALUES (p_cliente_id, 0)
-    RETURNING id_venta INTO v_id_venta;
-
-    -- Procesar el detalle de la venta
-    FOR v_item IN SELECT * FROM json_array_elements(p_detalle)
-    LOOP
-        v_id_producto := (v_item->>'id_producto')::INT;
-        v_cantidad := (v_item->>'cantidad')::INT;
-
-        -- Obtener el precio unitario del producto
-        SELECT precio INTO v_precio_unitario
-        FROM productos
-        WHERE id_producto = v_id_producto;
-
-        -- Insertar el detalle de la venta
-        INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario)
-        VALUES (v_id_venta, v_id_producto, v_cantidad, v_precio_unitario);
-
-        -- Actualizar el stock del producto
-        UPDATE productos
-        SET stock = stock - v_cantidad
-        WHERE id_producto = v_id_producto;
-
-        -- Calcular el total de la venta
-        v_total := v_total + (v_cantidad * v_precio_unitario);
-    END LOOP;
-
-    -- Actualizar el total de la venta
-    UPDATE ventas
-    SET total = v_total
-    WHERE id_venta = v_id_venta;
-END;
-$$ LANGUAGE plpgsql;
-
---Validar que el cliente exista.
 
 -- Validar que el cliente exista
 IF NOT EXISTS (
@@ -203,77 +152,9 @@ IF NOT EXISTS (
 END IF;
 
 
--- Verificar que el stock sea suficiente antes de procesar la venta
-FOR v_item IN SELECT * FROM json_array_elements(p_detalle)
-LOOP
-    v_id_producto := (v_item->>'id_producto')::INT;
-    v_cantidad := (v_item->>'cantidad')::INT;
-
-    -- Verificar stock disponible
-    IF (SELECT stock FROM productos WHERE id_producto = v_id_producto) < v_cantidad THEN
-        RAISE EXCEPTION 'Stock insuficiente para el producto con ID %', v_id_producto;
-    END IF;
-
-    -- Obtener el precio unitario del producto
+ -- Obtener el precio unitario del producto
     SELECT precio INTO v_precio_unitario
     FROM productos
     WHERE id_producto = v_id_producto;
 
-    -- Insertar el detalle de la venta
-    INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario)
-    VALUES (v_id_venta, v_id_producto, v_cantidad, v_precio_unitario);
 
-    -- Actualizar el stock del producto
-    UPDATE productos
-    SET stock = stock - v_cantidad
-    WHERE id_producto = v_id_producto;
-
-    -- Calcular el total de la venta
-    v_total := v_total + (v_cantidad * v_precio_unitario);
-END LOOP;
-
-
--- Si no hay stock suficiente, notificar por medio de un mensaje en consola usando RAISE
-FOR v_item IN SELECT * FROM json_array_elements(p_detalle)
-LOOP
-    v_id_producto := (v_item->>'id_producto')::INT;
-    v_cantidad := (v_item->>'cantidad')::INT;
-
-    -- Verificar stock disponible
-    IF (SELECT stock FROM productos WHERE id_producto = v_id_producto) < v_cantidad THEN
-        RAISE NOTICE 'Stock insuficiente para el producto con ID %: Disponible %, Requerido %', 
-            v_id_producto, 
-            (SELECT stock FROM productos WHERE id_producto = v_id_producto), 
-            v_cantidad;
-        CONTINUE; -- Continuar con el siguiente producto
-    END IF;
-
-    -- Obtener el precio unitario del producto
-    SELECT precio INTO v_precio_unitario
-    FROM productos
-    WHERE id_producto = v_id_producto;
-
-    -- Insertar el detalle de la venta
-    INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario)
-    VALUES (v_id_venta, v_id_producto, v_cantidad, v_precio_unitario);
-
-    -- Actualizar el stock del producto
-    UPDATE productos
-    SET stock = stock - v_cantidad
-    WHERE id_producto = v_id_producto;
-
-    -- Calcular el total de la venta
-    v_total := v_total + (v_cantidad * v_precio_unitario);
-END LOOP;
-
--- Si hay stock suficiente, realizar el registro de la venta
-IF v_total > 0 THEN
-
-    UPDATE ventas
-    SET total = v_total
-    WHERE id_venta = v_id_venta;
-
-    RAISE NOTICE 'Venta registrada exitosamente con ID % y total %', v_id_venta, v_total;
-ELSE
-    RAISE NOTICE 'No se registró la venta debido a falta de stock.';
-END IF;
