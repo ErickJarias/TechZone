@@ -4,129 +4,7 @@ Tienda de Tecnología
 
 Descripción del proyecto explicando su propósito y funcionalidad.
 
-
-CREATE DATABASE TechZone
-
-CREATE TABLE productos (
-id_producto SERIAL PRIMARY KEY,
-nombre TEXT NOT NULL,
-precio NUMERIC NOT NULL CHECK (precio >= 0),
-stock INT NOT NULL DEFAULT 0,
-updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE clientes (
-id SERIAL PRIMARY KEY,
-nombre TEXT NOT NULL
-);
-CREATE TABLE categorias (
-id_categoria SERIAL PRIMARY KEY,
-nombre TEXT NOT NULL
-);
-
-ALTER TABLE productos
-ADD COLUMN id_categoria INT REFERENCES categorias(id_categoria);
-
-CREATE TABLE ventas (
-id_venta SERIAL PRIMARY KEY,
-cliente_id INT NOT NULL REFERENCES clientes(id),
-total NUMERIC(10,2) DEFAULT 0,
-fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE detalle_venta (
-id SERIAL PRIMARY KEY,
-id_venta INT NOT NULL REFERENCES ventas(id_venta),
-id_producto INT NOT NULL REFERENCES productos(id_producto),
-cantidad INT NOT NULL CHECK (cantidad > 0),
-precio_unitario NUMERIC(10, 2) NOT NULL
-);
-
-CREATE TABLE proveedores (
-id_proveedor SERIAL PRIMARY KEY,
-nombre TEXT NOT NULL,
-contacto TEXT,
-telefono TEXT
-);
-
-CREATE TABLE detalle_compra (
-id SERIAL PRIMARY KEY,
-id_compra INT NOT NULL REFERENCES compras(id_compra) ON DELETE CASCADE,
-id_producto INT NOT NULL REFERENCES productos(id_producto),
-cantidad INT NOT NULL CHECK (cantidad > 0),
-precio_unitario NUMERIC(10,2) NOT NULL
-);
-
-CREATE TABLE compras (
-id_compra SERIAL PRIMARY KEY,
-id_proveedor INT NOT NULL REFERENCES proveedores(id_proveedor),
-fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
-
-INSERT INTO categorias (nombre) VALUES ('LAPTOS');
-INSERT INTO categorias (nombre) VALUES ('TELEFONOS');
-INSERT INTO categorias (nombre) VALUES ('AUDIFONOS');
-
-INSERT INTO Proveedores (nombre, contacto, telefono) VALUES ('Daniel Arenas', 'Norma', '3115998706');
-INSERT INTO Proveedores (nombre, contacto, telefono) VALUES ('Juana Jugan', 'Juan', '3125456789');
-INSERT INTO Proveedores (nombre, contacto, telefono) VALUES ('Franco Alva', 'David', '3135643213');
-
-
-INSERT INTO clientes (id,nombre, correo, telefono) VALUES ('0001','Erika Millan', 'eka98@hotmail.com', '311-599-8706');
-INSERT INTO clientes (id,nombre, correo, telefono) VALUES ('0002','James Rodriguez', 'goleador@gmail.com', '311-549-8706');
-INSERT INTO clientes (id,nombre, correo, telefono) VALUES ('0003','Alexis Higuera', 'higuera98@gmail.com', '312-599-8706');
-INSERT INTO clientes (id,nombre, correo, telefono) VALUES ('0004','William Perez', 'williamp@gmail.com', '3154356242');
-INSERT INTO clientes (id,nombre, correo, telefono) VALUES ('0005','Juan Villa', 'villaJuanda@gmail.com', '3154534251');
-
-
-INSERT INTO productos (nombre, precio, stock, updated_at, id_categoria, id_proveedor) VALUES
-('Lenovo  X1', 5500000, 10, CURRENT_TIMESTAMP, 1, 1),
-('Samsung S25', 3800000, 15, CURRENT_TIMESTAMP, 2, 2),
-('Lenovo x2', 450000, 20, CURRENT_TIMESTAMP, 3, 3),
-('Iphone 15', 3200000, 8, CURRENT_TIMESTAMP, 1, 1),
-('Xiaomi Redmi 12', 900000, 25, CURRENT_TIMESTAMP, 2, 2),
-('Audífonos apple', 620000, 12, CURRENT_TIMESTAMP, 3, 3);
-
---Listar los productos con stock menor a 5 unidades
-SELECT nombre, stock 
-FROM productos 
-WHERE stock < 5;
-
-
---Calcular ventas totales de un mes específico--
-SELECT 
-    TO_CHAR(fecha, 'YYYY-MM') AS mes,
-    SUM(total) AS ventas_totales
-FROM ventas
-WHERE TO_CHAR(fecha, 'YYYY-MM') = '2023-10'
-GROUP BY TO_CHAR(fecha, 'YYYY-MM');
-
---Obtener el cliente con más compras realizadas--
-
-SELECT 
-    c.nombre AS cliente,
-    COUNT(v.id_venta) AS total_compras
-FROM clientes c
-JOIN ventas v ON c.id = v.cliente_id
-GROUP BY c.id, c.nombre
-ORDER BY total_compras DESC
-LIMIT 1;
-
--- los 5 productos más vendidos.--
-
-SELECT 
-    p.nombre AS producto,
-    SUM(dv.cantidad) AS total_vendidos
-FROM detalle_venta dv
-JOIN productos p ON dv.id_producto = p.id_producto
-GROUP BY p.id_producto, p.nombre
-ORDER BY total_vendidos DESC
-LIMIT 5;
-
-
-Entre sus principales funcionalidades se encuentran:
+ funcionalidades:
 
 🔹 Gestión de productos
 🔹 Control de inventario
@@ -139,3 +17,70 @@ Tecnologías utilizadas:
 
 🔹 PostgreSQL.
 🔹 pgSQL.
+
+Instrucciones detalladas para importar y ejecutar los archivos SQL en PostgreSQL.
+
+
+1. Abre pgAdmin y conecta a tu servidor
+2. Crea una nueva base de datos:
+Haz clic derecho en "Databases" → "Create" - "Database..."
+
+Escribe el nombre de la base de datos (techzone) y guarda.
+
+3. Importar el archivo .sql:
+Selecciona tu base de datos → Haz clic en Tools → Query Tool.
+
+En el ícono de carpeta, abre tu archivo .sql.
+
+Presiona el botón de Ejecutar.
+
+ Descripción de Archivos SQL del Proyecto
+
+--db.sql – Definición de la estructura de la base de datos
+    
+ Este script contiene todas las instrucciones necesarias para crear las tablas, relaciones, llaves primarias y foráneas del sistema.
+
+Incluye:
+Sentencias CREATE TABLE
+Tipos de datos (TEXT, NUMERIC, DATE)
+Claves primarias (PRIMARY KEY)
+Relaciones (FOREIGN KEY)
+Restricciones (CHECK, NOT NULL).
+
+--insert.sql – cuerpo de la base de datos
+
+Productos disponibles en inventario
+
+Categorías como "Smartphones", "Laptops", etc.
+
+Proveedores
+Clientes
+Ventas y detalles de ventas
+
+ Se ejecuta después de db.sql. Sirve para tener datos con los cuales probar consultas y procedimientos.
+
+queries.sql – Consultas SQL para análisis o reportes
+
+--Listar productos con stock bajo.
+
+Calcular las ventas de un mes específico.
+Obtener el cliente que más ha comprado.
+Ver los productos más vendidos.
+
+--procedure.sql – Funciones y procedimientos almacenados
+
+Registrar una venta (y actualizar stock automáticamente).
+Calcular total de una compra o venta.
+Validar si un cliente existe antes de ejecutar una operación.
+
+--Ejemplo de cómo ejecutar las consultas y el procedimiento almacenado en PostgreSQ
+ En pgAdmin:
+
+Abre tu base de datos.
+Ve a Tools > Query Tool.
+escribe o pega la consulta y presiona Ejecutar.
+
+hecho por :https://github.com/ErickJarias
+
+
+
